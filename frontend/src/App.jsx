@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { verifyById, queryCertificates, checkHealth } from "./services/api";
+import { verifyById, queryCertificates, checkHealth, verifyByDetails } from "./services/api";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import FaqSection from "./components/FaqSection";
@@ -14,6 +14,13 @@ export default function App() {
   const [searchId, setSearchId] = useState("");
   const [searched, setSearched] = useState(false);
   const [verifyResult, setVerifyResult] = useState(null);
+
+  // Verify-by-Details state
+  const [detailName, setDetailName] = useState("");
+  const [detailEvent, setDetailEvent] = useState("");
+  const [detailYear, setDetailYear] = useState("2026");
+  const [detailResult, setDetailResult] = useState(null);
+  const [detailSearched, setDetailSearched] = useState(false);
 
   // Filter state
   const [filterYear, setFilterYear] = useState("all");
@@ -80,6 +87,35 @@ export default function App() {
     window.history.pushState({}, "", window.location.pathname);
   };
 
+  // ── Verify by Details ──
+  const runVerifyDetails = async (e) => {
+    if (e) e.preventDefault();
+    const name = detailName.trim();
+    const event = detailEvent.trim();
+    const year = detailYear.trim();
+    if (!name || !event || !year) {
+      setError("Please enter Name, Event, and Year.");
+      setDetailSearched(true);
+      return;
+    }
+    setLoading(true); setError(null); setDetailResult(null); setDetailSearched(true);
+    try {
+      const res = await verifyByDetails(name, event, year);
+      if (res.error) setError(res.error);
+      else if (res.data) setDetailResult(res.data);
+      else setError("Student not found.");
+    } catch {
+      setError("An unexpected error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetVerifyDetails = () => {
+    setDetailName(""); setDetailEvent(""); setDetailYear("2026");
+    setDetailResult(null); setError(null); setDetailSearched(false);
+  };
+
   // Badge class helper
   const badgeClass = (type) =>
     type === "Core Team Member" ? "badge-team"
@@ -119,6 +155,10 @@ export default function App() {
               onClick={() => { setActiveTab("verify"); setError(null); }}>
               Verify by ID
             </button>
+            <button className={`tab-btn ${activeTab === "verify-details" ? "active" : ""}`}
+              onClick={() => { setActiveTab("verify-details"); setError(null); }}>
+              Verify by Details
+            </button>
             <button className={`tab-btn ${activeTab === "filter" ? "active" : ""}`}
               onClick={() => { setActiveTab("filter"); setError(null); }}>
               Filter &amp; Browse
@@ -149,6 +189,61 @@ export default function App() {
               </form>
               {searched && <button className="clear-link" onClick={resetVerify}>Clear search</button>}
             </div>
+          )}
+
+          {/* Tab 3: Verify by Details */}
+          {activeTab === "verify-details" && (
+            <form className="filter-form" onSubmit={runVerifyDetails}>
+              <div className="filter-grid">
+                <div className="filter-group">
+                  <label className="filter-label">Student Name</label>
+                  <input
+                    className="search-input"
+                    type="text"
+                    placeholder="Enter Student Name (e.g. Alex Rivera)"
+                    value={detailName}
+                    onChange={e => setDetailName(e.target.value)}
+                    disabled={loading}
+                    required
+                  />
+                </div>
+                <div className="filter-group">
+                  <label className="filter-label">Event Name</label>
+                  <input
+                    className="search-input"
+                    type="text"
+                    placeholder="Enter Event Name (e.g. Lead Community Organizer)"
+                    value={detailEvent}
+                    onChange={e => setDetailEvent(e.target.value)}
+                    disabled={loading}
+                    required
+                  />
+                </div>
+                <div className="filter-group">
+                  <label className="filter-label">Cohort Year</label>
+                  <select
+                    className="filter-select"
+                    value={detailYear}
+                    onChange={e => setDetailYear(e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                  </select>
+                </div>
+              </div>
+              <div className="filter-actions">
+                <button type="button" className="ghost-btn" onClick={resetVerifyDetails}>Clear</button>
+                <button type="submit" className="search-btn" disabled={loading}>
+                  {loading ? <div className="spinner" /> : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                      Verify Student
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           )}
 
           {/* Tab 2: Filter & Browse */}
@@ -211,6 +306,36 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* ── Verify Details result (single card) ── */}
+        {detailResult && !loading && activeTab === "verify-details" && (
+          <div className="results-section fade-in">
+            <div className="results-header">
+              <p className="results-count" style={{ color: "var(--success)" }}>✓ Verified: Student is Present!</p>
+            </div>
+            <div className="results-grid">
+              <div className="preview-card glass-card" style={{ cursor: "default", borderColor: "var(--success)" }}>
+                <div className="preview-top">
+                  <h4 className="preview-name">{detailResult.RecipientName}</h4>
+                  <span className={`preview-badge ${badgeClass(detailResult.CertificateType)}`}>{detailResult.CertificateType}</span>
+                </div>
+                <p className="preview-role">{detailResult.EventOrRoleName}</p>
+                {detailResult.Description && (
+                  <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", lineHeight: 1.6 }}>{detailResult.Description}</p>
+                )}
+                <div className="preview-bottom">
+                  <span>Cohort {detailResult.PartitionKey}</span>
+                  <span className="preview-id">{detailResult.RowKey}</span>
+                </div>
+                {detailResult.IssueDate && (
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", borderTop: "1px solid var(--line)", paddingTop: "0.6rem" }}>
+                    Issued: {detailResult.IssueDate} · By: {detailResult.IssuedBy || "AWS Student Builder Group"}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Verify result (single card, no certificate view) ── */}
         {verifyResult && !loading && activeTab === "verify" && (

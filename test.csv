@@ -1,0 +1,3 @@
+PartitionKey,RowKey,Name,Event,Year,CertificateType,Description,IssuedBy,ExpiryDate
+2026,AWS-STUDENT-2026-101,Aarav Mehta,Cloud Genesis Hackathon,2026,Volunteer,Served as technical volunteer support for cloud labs,AWS Student Builder Group,N/A
+2025,AWS-STUDENT-2025-202,Diya Sen,AWS Cloud Practitioner bootcamp,2025,Event Attendee,Successfully completed intensive cloud practitioner training,AWS Student Builder Group,2027-12-31

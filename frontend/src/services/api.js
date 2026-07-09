@@ -68,3 +68,33 @@ export async function checkHealth() {
     return { ok: false, azureConfigured: false };
   }
 }
+
+/**
+ * Verify a certificate by entering Name, Event, and Year.
+ * @param {string} name
+ * @param {string} event
+ * @param {string} year
+ * @returns {Promise<{data: object|null, error: string|null}>}
+ */
+export async function verifyByDetails(name, event, year) {
+  try {
+    const params = new URLSearchParams();
+    params.set("name", name.trim());
+    params.set("event", event.trim());
+    params.set("year", year.trim());
+
+    const res = await fetch(`${API_BASE}/verify-details?${params.toString()}`);
+    if (res.status === 404) {
+      return { data: null, error: "Student not found with these details." };
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { data: null, error: body.detail || `Server error (${res.status})` };
+    }
+    const json = await res.json();
+    return { data: json.data, error: null };
+  } catch (err) {
+    console.error("API verifyByDetails error:", err);
+    return { data: null, error: "Could not reach the server. Is the backend running?" };
+  }
+}
